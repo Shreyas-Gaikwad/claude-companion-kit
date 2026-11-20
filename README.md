@@ -11,21 +11,23 @@ A cred is a token counted at its price, in tokens of Claude Opus 5.5 input ($4 p
 
 ## Install
 
-At the prompt of a terminal session:
-
-```
-/plugin install taskband --marketplace Shreyas-Gaikwad/claude-companion-kit
-/plugin install chat-monitor --marketplace Shreyas-Gaikwad/claude-companion-kit
-```
-
-Answer `y` to add the marketplace, then press Enter to install for your user. Each mod then asks for its options; the defaults are fine.
-
 From a shell:
 
 ```
-claude plugin install taskband --marketplace Shreyas-Gaikwad/claude-companion-kit
-claude plugin install chat-monitor --marketplace Shreyas-Gaikwad/claude-companion-kit
+claude plugin marketplace add Shreyas-Gaikwad/claude-companion-kit
+claude plugin install taskband@claude-companion-kit
+claude plugin install chat-monitor@claude-companion-kit
 ```
+
+Or at the prompt of a Claude Code terminal session:
+
+```
+/plugin marketplace add Shreyas-Gaikwad/claude-companion-kit
+/plugin install taskband@claude-companion-kit
+/plugin install chat-monitor@claude-companion-kit
+```
+
+Add the marketplace once, then install either mod or both. The defaults of each mod's options are fine.
 
 In the desktop app, where `/plugin` does not run: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `Shreyas-Gaikwad/claude-companion-kit`, then **Add plugin** for each mod.
 
