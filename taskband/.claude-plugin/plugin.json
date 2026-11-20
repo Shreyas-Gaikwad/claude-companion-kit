@@ -1,0 +1,39 @@
+{
+  "name": "taskband",
+  "version": "1.22.2",
+  "description": "A slim band above the prompt with the progress of the current task, what it used in creds (by Claude Code's own cost), the 5-hour limit and a prompt-cache countdown that, once cold or after a model switch, shows what the next send costs in creds on the model it goes to; on the desktop a small clock beside it says when it goes cold, its ring draining smoothly with the cache; the row's bars slide to new lengths and the task's shimmers while Claude works; after a compaction the band counts the new context size at once; /keepwarm keeps the cache warm through breaks with small pings (they cost tokens); a chevron opens the step list, both limits, the turn's cost and its use of each limit, the context window and a Compact button",
+  "author": {
+    "name": "Shreyas"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "cacheMinutes": {
+      "type": "string",
+      "title": "Cache lifetime (minutes)",
+      "description": "How long the prompt cache stays warm after a request. 60 on a subscription; 5 once the session is billed as extra usage.",
+      "options": ["60", "5"],
+      "default": "60"
+    },
+    "cacheAlert": {
+      "type": "string",
+      "title": "Cache cooling notice",
+      "description": "Send a notification when the prompt cache has five minutes left. The countdown turns red and pulses either way.",
+      "options": ["on", "off"],
+      "default": "off"
+    },
+    "autoWarm": {
+      "type": "string",
+      "title": "Auto keepwarm",
+      "description": "on: after a send pays to write a cold cache again, keepwarm holds it warm for three hours by itself. off: keepwarm runs only when you arm it with /keepwarm. Pings cost tokens.",
+      "options": ["on", "off"],
+      "default": "on"
+    },
+    "finishSound": {
+      "type": "string",
+      "title": "Sound when a long turn ends",
+      "description": "Play a short Windows chime when a turn that took a minute or more finishes.",
+      "options": ["on", "off"],
+      "default": "on"
+    }
+  }
+}

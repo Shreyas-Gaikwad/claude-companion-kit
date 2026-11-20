@@ -1,0 +1,37 @@
+{
+  "name": "chat-monitor",
+  "version": "2.0.1",
+  "description": "A side pane, In this chat, in a quiet card layout: a summary card with the total, a bar of where creds went and tiles for cache hits, cold sends, the priciest prompt and the average per prompt; lists with tiles, tags and sort menus; a to-do stepper; the to-do list, connectors, websites, files, subagents with their creds and skills with their creds (instructions, skill list line and the turns that used them) this chat has used; failed and blocked calls; what loads into every message in creds, unused connectors and skills first; the total and each subagent's creds by Claude Code's own cost estimate; and a Copy button (/chat-monitor copy) for a Markdown summary",
+  "author": {
+    "name": "Shreyas"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "autoOpen": {
+      "type": "string",
+      "title": "Open by itself",
+      "description": "Open the pane the first time this chat uses a connector, file or skill, or gets a to-do list.",
+      "options": ["on", "off"],
+      "default": "on"
+    },
+    "names": {
+      "type": "string",
+      "title": "Connector names",
+      "description": "Names for connectors that only show an id, as id=name pairs separated by commas. The first characters of the id are enough: 1a59=Docs, 7a9f=Meetings.",
+      "default": ""
+    },
+    "slowSeconds": {
+      "type": "string",
+      "title": "Slow call (seconds)",
+      "description": "A call that runs at least this many seconds is marked slow in its connector's or website's call list.",
+      "default": "30"
+    },
+    "cacheMinutes": {
+      "type": "string",
+      "title": "Cache lifetime (minutes)",
+      "description": "Prices creds as taskband does: 60 on a subscription; 5 once the session is billed as extra usage. Keep it the same as taskband's.",
+      "options": ["60", "5"],
+      "default": "60"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "claude-companion-kit",
+  "owner": { "name": "Shreyas" },
+  "description": "Companion mods for Claude Code: a band above the prompt for the task, limits and cache, and a side pane of what each chat used and cost",
+  "plugins": [
+    {
+      "name": "taskband",
+      "source": "./taskband",
+      "description": "A slim band above the prompt with the task's progress and creds, the 5-hour limit, and a prompt-cache countdown that forecasts a cold send; /keepwarm keeps the cache warm through breaks"
+    },
+    {
+      "name": "chat-monitor",
+      "source": "./chat-monitor",
+      "description": "A side pane of what this chat used and cost: the session's total, the to-do list, connectors, web, subagents, files, skills and what loads into every message; /chat-monitor opens it"
+    }
+  ]
+}
