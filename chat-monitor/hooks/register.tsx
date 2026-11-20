@@ -8,7 +8,7 @@ import { LOGOS } from './logos'
 import { cliCalls, connectorOf, ownNameOf, plainTool, setOwnNames, slug } from './names'
 
 const PANE = 'chat-monitor'
-const TITLE = 'In this chat'
+const TITLE = 'Monitor'
 const MAX_CALLS = 50
 const CALLS_SHOWN = 12
 const FILES_SHOWN = 8
@@ -1805,7 +1805,7 @@ export const register: Register = (on, options) => {
     await openPane($)
     void readContext($).catch(err => log($, 'context', err))
     later($, 'session', () => readSession($))
-    return { text: 'Opened the In this chat pane.' }
+    return { text: 'Opened the Monitor pane.' }
   })
 
   // A skill the person typed as a slash command.
@@ -1886,12 +1886,11 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // Presses: a card's title folds it, a row opens its calls, the file list grows or shrinks.
+  // Presses: a card's header folds it, a row opens its calls, the file list grows or shrinks.
   on('ui.press', async ($, e, next) => {
     const key = e.element
-    // A card's label and its arrow both fold it.
-    if (key.startsWith('sec-') || key.startsWith('fold-')) {
-      const id = key.slice(key.indexOf('-') + 1)
+    if (key.startsWith('sec-')) {
+      const id = key.slice('sec-'.length)
       await update($, viewAtom, view => ({ ...view, folded: view.folded.includes(id) ? view.folded.filter(one => one !== id) : [...view.folded, id] }))
     } else if (/^[cws]:/.test(key) || key === 'searches' || key === 'skills-list') {
       await update($, viewAtom, view => ({ ...view, open: view.open === key ? '' : key }))
@@ -2101,24 +2100,29 @@ export const register: Register = (on, options) => {
       ) : null
 
     /**
-     * A card: a hairline round its section, a monospace label that folds it, its figure in a chip,
-     * a sort where its list has one, and an arrow that folds it too.
+     * A card: a hairline round its section, its arrow and monospace label in one button that folds
+     * it, its figure in quiet text on the card's own background, and a sort where its list has one. The button holds one text, as every
+     * row's does: the desktop draws a button's text, so the arrow is in it.
      */
     const card = (id: string, title: string, figure: string, body: unknown, extra: unknown = null) => {
       const isOpen = !view.folded.includes(id)
       return (
         <Box key={id} flexDirection="column" borderStyle="round" {...(isRich ? { borderColor: LINE } : { borderDimColor: true })} paddingLeft={PAD_LEFT} paddingRight={PAD_RIGHT} width={width} flexShrink={0}>
           <Box flexDirection="row" alignItems="center" width={inner} columnGap={1}>
-            {isRich ? null : <Text dimColor>{isOpen ? '▾' : '▸'}</Text>}
             <Button key={`sec-${id}`} plain onPress={nothing}>
               <Text mono size="caption" dimColor>
-                {title}
+                {`${isOpen ? '▾' : '▸'} ${title}`}
               </Text>
             </Button>
-            {figure ? chip(`fig-${id}`, figure) : null}
+            {figure ? (
+              <Box key={`fig-${id}`} flexShrink={0}>
+                <Text size="caption" tabular dimColor wrap="truncate">
+                  {figure}
+                </Text>
+              </Box>
+            ) : null}
             <Box flexGrow={1} />
             {isOpen ? (extra as never) : null}
-            {isRich ? <Button key={`fold-${id}`} plain dimColor label={isOpen ? '▾' : '▸'} onPress={nothing} /> : null}
           </Box>
           {isOpen ? (
             <Box flexDirection="column" width={inner}>
@@ -2189,7 +2193,7 @@ export const register: Register = (on, options) => {
       ? [
           line(
             'sum-top',
-            [eyebrow('l', 'session')],
+            [eyebrow('l', 'Session')],
             chip('src', ledgerUsd >= 0 ? 'total from Claude Code' : 'by the price table', ledgerUsd >= 0 ? TONES.good : undefined),
           ),
           <Box key="sum-figure" flexDirection="row" alignItems="flex-end" width={inner} columnGap={1}>
@@ -2661,13 +2665,13 @@ export const register: Register = (on, options) => {
         <Box key="session" flexDirection="column" borderStyle="round" {...(isRich ? { borderColor: LINE } : { borderDimColor: true })} paddingLeft={PAD_LEFT} paddingRight={PAD_RIGHT} paddingY={isRich ? 1 : 0} width={width} flexShrink={0}>
           {sessionBody as never}
         </Box>
-        {card('todo', 'to-do', plan.steps.length ? `${done} of ${plan.steps.length}` : '', todoBody)}
-        {card('connectors', 'connectors', connectors.length ? String(connectors.length) : '', connectorBody, sortIf('connectors', connectors.length, ['most calls', 'a to z']))}
-        {card('web', 'web', sites.length || list.searches.length ? String(sites.length + list.searches.length) : '', webBody, sortIf('web', sites.length, ['most pages', 'a to z']))}
-        {card('agents', 'subagents', agents.length ? String(agents.length) : '', agentBody)}
-        {card('files', 'files', files.length ? String(files.length) : '', fileBody, sortIf('files', files.length, ['edited first', 'a to z']))}
-        {card('skills', 'skills', skills.length ? `${skills.length}${skillsTotal ? ` · ≈${credsText(skillsTotal)} creds` : ''}` : '', skillBody, sortIf('skills', skills.length, ['most creds', 'a to z']))}
-        {card('cost', 'context cost', weights.at ? `≈${amount(costs.perMessage(costs.allTokens))} a message` : '', costBody)}
+        {card('todo', 'To-do', plan.steps.length ? `${done} of ${plan.steps.length}` : '', todoBody)}
+        {card('connectors', 'Connectors', connectors.length ? String(connectors.length) : '', connectorBody, sortIf('connectors', connectors.length, ['most calls', 'a to z']))}
+        {card('web', 'Web', sites.length || list.searches.length ? String(sites.length + list.searches.length) : '', webBody, sortIf('web', sites.length, ['most pages', 'a to z']))}
+        {card('agents', 'Subagents', agents.length ? String(agents.length) : '', agentBody)}
+        {card('files', 'Files', files.length ? String(files.length) : '', fileBody, sortIf('files', files.length, ['edited first', 'a to z']))}
+        {card('skills', 'Skills', skills.length ? `${skills.length}${skillsTotal ? ` · ≈${credsText(skillsTotal)} creds` : ''}` : '', skillBody, sortIf('skills', skills.length, ['most creds', 'a to z']))}
+        {card('cost', 'Context cost', weights.at ? `≈${amount(costs.perMessage(costs.allTokens))} a message` : '', costBody)}
       </Box>
     )
   })

@@ -143,7 +143,7 @@ function engine(on: On, world: World) {
     if (wait) await clock.sleep(wait)
     return (world.answers?.[id] ?? { result: {} }) as never
   })
-  on('ui.panes', async () => ({ value: world.isUp ? [{ id: 'chat-monitor', title: 'In this chat' }] : [] }) as never)
+  on('ui.panes', async () => ({ value: world.isUp ? [{ id: 'chat-monitor', title: 'Monitor' }] : [] }) as never)
   on('ui.open', async () => {
     world.opens += 1
     world.isUp = true
@@ -195,7 +195,7 @@ const transcriptOf = (ids: string[]) => ids.map(id => JSON.stringify({ type: 'as
 // The pane shows local time, so the expected time is worked out the same way.
 const two = (n: number) => String(n).padStart(2, '0')
 const shownTime = (stamp: string) => `${two(new Date(stamp).getHours())}:${two(new Date(stamp).getMinutes())}`
-const props = { title: 'In this chat', isFocused: false, bodyColumns: 48, placement: 'dock', scroll: { offset: 0, bodyRows: 40 }, view: {} } as never
+const props = { title: 'Monitor', isFocused: false, bodyColumns: 48, placement: 'dock', scroll: { offset: 0, bodyRows: 40 }, view: {} } as never
 const start = ($: { session: { start: (e: never) => Promise<unknown> } }, surface: string) => $.session.start({ source: 'startup', cwd: CWD, surface, isInteractive: true } as never)
 
 for (const surface of ['desktop', 'terminal'] as const) {
@@ -683,7 +683,7 @@ test('the Session card: total spent, time, activity, cache hit rate, where creds
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
 
   // The summary card: its label, the total large in creds and dollars, and where the total came from.
-  expect(await has(/^session$/), 'the card').toBeDefined()
+  expect(await has(/^Session$/), 'the card').toBeDefined()
   expect(await has(/^≈175k$/), 'total spent, by the ledger').toBeDefined()
   expect(await has(/^\$0\.70$/), 'in dollars').toBeDefined()
   expect(await has(/^total from Claude Code$/), 'where the total came from').toBeDefined()
@@ -898,7 +898,7 @@ test('a subagent shows Claude Code\'s own cost for it once Claude Code has one',
 })
 
 // 1.11.0: the redesigned pane.
-test('a list sorts by its dropdown, a card folds by its arrow too, and an empty section says what will show there', { timeoutMs: 30_000 }, async ($, on) => {
+test('a list sorts by its dropdown, a card folds by its arrow and label in one button, and an empty section says what will show there', { timeoutMs: 30_000 }, async ($, on) => {
   const world = fresh()
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
@@ -914,14 +914,21 @@ test('a list sorts by its dropdown, a card folds by its arrow too, and an empty 
   await ui.select({ key: 'sort-connectors', value: 'a to z' })
   expect(await names(), 'by name').toEqual(['Connector 1a59', 'GitHub'])
 
-  // The arrow folds a card as its label does, and opens it again.
-  await ui.press({ key: 'fold-connectors' })
+  // The arrow is in the label's button, at its left: one press folds the card and turns the arrow.
+  const header = async () => (await ui.find({ type: 'Button', key: 'sec-connectors' }))?.text
+  expect(await header(), 'arrow and label in one button').toBe('▾ Connectors')
+  const figure = await ui.find({ type: 'Text', text: /^2$/ })
+  expect(figure, 'the count beside the label').toBeDefined()
+  expect((figure?.props as { backgroundColor?: string }).backgroundColor, 'on the card, no chip behind it').toBeUndefined()
+  expect(await ui.findAll({ type: 'Button', text: /^[▾▸]$/ }), 'no separate arrow button').toEqual([])
+  await ui.press({ key: 'sec-connectors' })
   expect(await names(), 'folded').toEqual([])
-  await ui.press({ key: 'fold-connectors' })
+  expect(await header(), 'the arrow turns').toBe('▸ Connectors')
+  await ui.press({ key: 'sec-connectors' })
   expect((await names()).length, 'open again').toBe(2)
 
   // Small monospace labels over each section; tags on the files; a placeholder where nothing is yet.
-  expect(await has(/^connectors$/)).toBeDefined()
+  expect(await has(/^▾ Connectors$/)).toBeDefined()
   expect(await has(/^edited$/), 'the edited file is tagged').toBeDefined()
   expect(await has(/^None started yet\. Subagents show here/), 'the empty subagents section says what goes there').toBeDefined()
   // Tiles for each row: GitHub's logo, the skill's slash.
