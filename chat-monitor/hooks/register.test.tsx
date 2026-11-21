@@ -198,13 +198,39 @@ const shownTime = (stamp: string) => `${two(new Date(stamp).getHours())}:${two(n
 const props = { title: 'Monitor', isFocused: false, bodyColumns: 48, placement: 'dock', scroll: { offset: 0, bodyRows: 40 }, view: {} } as never
 const start = ($: { session: { start: (e: never) => Promise<unknown> } }, surface: string) => $.session.start({ source: 'startup', cwd: CWD, surface, isInteractive: true } as never)
 
+/** The cards that fold, in the pane's order. */
+const CARDS = ['todo', 'connectors', 'web', 'agents', 'files', 'skills', 'cost']
+type Looks = { find: (query: { type: string; key: string }) => Promise<{ text?: string } | undefined>; press: (query: { key: string }) => Promise<unknown> }
+/**
+ * The pane as a person reads it: the mod folds every card each time it opens the pane, and the
+ * person opens the cards to read them. So after each open, every folded card is opened before the
+ * next look, press or pick; a card a test folds itself afterwards stays folded.
+ */
+function unfolding<U extends object>(ui: U, world: World): U {
+  const looks = ui as unknown as Looks
+  let seen = -1
+  const unfold = async () => {
+    if (seen === world.opens) return
+    seen = world.opens
+    for (const id of CARDS) if ((await looks.find({ type: 'Button', key: `sec-${id}` }))?.text?.startsWith('▸')) await looks.press({ key: `sec-${id}` })
+  }
+  // The mounted pane is frozen, so a copy of it stands in, its looks and presses unfolding first.
+  const acts = Object.fromEntries(
+    ['find', 'findAll', 'press', 'select'].filter(name => typeof (ui as Record<string, unknown>)[name] === 'function').map(name => {
+      const act = (ui as Record<string, unknown>)[name] as (...args: unknown[]) => unknown
+      return [name, async (...args: unknown[]) => (await unfold(), act.apply(ui, args))]
+    }),
+  )
+  return { ...ui, ...acts } as U
+}
+
 for (const surface of ['desktop', 'terminal'] as const) {
   test(`what the chat did before the mod loaded is in the pane (${surface})`, { timeoutMs: 30_000 }, async ($, on) => {
     const world = fresh()
     const clock = engine(on as never, world)
     await start($ as never, surface)
     await clock.settle()
-    const ui = await $.ui.mount({ plugin: 'chat-monitor', surface, component: 'Pane', requestId: 'chat-monitor', props })
+    const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface, component: 'Pane', requestId: 'chat-monitor', props }), world)
     const pane = async () => ui
     const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
     expect(world.opens, 'a chat that already used things opens its pane').toBe(1)
@@ -249,7 +275,7 @@ test('live calls are counted once, open the pane, and move the to-do list', { ti
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const pane = async () => ui
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
   expect(world.opens, 'an empty chat opens nothing').toBe(0)
@@ -288,7 +314,7 @@ test('the names setting labels an id connector, and off keeps the pane shut', { 
   await clock.settle()
   expect(world.opens, 'off opens nothing by itself').toBe(0)
 
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   expect((await ui.find({ type: 'Text', text: /^Docs$/ }))?.text, 'named from the setting').toBe('Docs')
   expect(await ui.find({ type: 'Text', text: /Connector 1a59/ })).toBeUndefined()
 })
@@ -299,7 +325,7 @@ test('a claude.ai connector keeps one row as it learns its name, and the app\'s 
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
 
   await callTool($ as never, clock, { tool: `mcp__${ID_SERVER}__read`, tool_use_id: 'n1', id: 'page-1' })
@@ -328,7 +354,7 @@ test('one file is one row however Windows spells its path', { timeoutMs: 30_000 
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
 
   await callTool($ as never, clock, { tool: 'Read', tool_use_id: 'f1', file_path: 'C:\\Users\\test\\notes\\plan.md' })
@@ -349,7 +375,7 @@ test('call times come from the transcript the settings hooks name, read only whe
   await $.classic.SessionStart({ source: 'resume', transcript_path: transcript } as never)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
 
   await ui.press({ key: 'c:github' })
@@ -370,7 +396,7 @@ test('a transcript filed under another folder name is found by the chat\'s id', 
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
 
   await ui.press({ key: 'c:github' })
   expect((await ui.find({ type: 'Text', text: new RegExp(`^${shownTime(STAMP)}$`) }))?.text, 'found and read').toBeDefined()
@@ -383,7 +409,7 @@ test('a long chat is never counted twice, and calls compacted away stay counted'
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
   expect(await has(/^4100 calls$/)).toBeDefined()
 
@@ -414,7 +440,7 @@ test('failed and blocked calls, websites and searches, and no Activity card', { 
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
 
   await callTool($ as never, clock, { tool: 'mcp__github__list_issues', tool_use_id: 'g1', query: 'crash' })
@@ -470,7 +496,7 @@ test('pages a browser went to are web, by the page each landed on; clicks and lo
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
   expect(await has(/^docs\.python\.org$/), 'a page from before the mod loaded').toBeDefined()
   await ui.press({ key: 'w:docs.python.org' })
@@ -530,7 +556,7 @@ test('subagents with their creds, what loads into every message, and the copied 
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
   await callTool($ as never, clock, { tool: 'mcp__github__list_issues', tool_use_id: 'g1', query: 'crash' })
 
@@ -601,7 +627,7 @@ test('a subagent\'s cache writes are priced by the cache the API says they went 
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
 
   // One subagent: its Agent call, its spawn, its requests, then its end.
@@ -679,7 +705,7 @@ test('the Session card: total spent, time, activity, cache hit rate, where creds
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
 
   // The summary card: its label, the total large in creds and dollars, and where the total came from.
@@ -786,7 +812,7 @@ test('each skill shows its creds: instructions carried, its skill-list line, and
   await clock.settle()
   await step($ as never, {})
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
 
   // code-review: 4,000 + 100 + 100 + 4,000 carried, and 5 for its line. deploy: 2,000 + 625, and 10.
@@ -837,7 +863,7 @@ test('a transcript is read in pieces from where the last read stopped, a line lo
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
   const reads = () => world.reads!.filter(path => path === transcript).length
 
@@ -873,7 +899,7 @@ test('a subagent shows Claude Code\'s own cost for it once Claude Code has one',
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
 
   const call = $.tool.call({ tool: 'Agent', tool_use_id: 'ag1', description: 'Find the auth code', subagent_type: 'Explore', prompt: 'Find it' } as never)
@@ -903,7 +929,7 @@ test('a list sorts by its dropdown, a card folds by its arrow and label in one b
   const clock = engine(on as never, world)
   await start($ as never, 'desktop')
   await clock.settle()
-  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const ui = unfolding(await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props }), world)
   const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
   const names = async () => (await ui.findAll({ type: 'Text', text: /^(GitHub|Connector 1a59)$/ })).map(one => one.text)
 
@@ -935,4 +961,36 @@ test('a list sorts by its dropdown, a card folds by its arrow and label in one b
   const tiles = (await ui.findAll({ type: 'Svg' })).map(one => (one.props as { alt?: string }).alt)
   expect(tiles, 'the connector tiles').toContain('GitHub')
   expect(tiles, 'a skill tile').toContain('skill')
+})
+
+// 2.2.0: every card folded each time the pane opens.
+test('the pane opens with every card folded, keeps what the person opened while it stays open, and folds them again when it opens anew', { timeoutMs: 30_000 }, async ($, on) => {
+  const world = fresh()
+  const clock = engine(on as never, world)
+  await start($ as never, 'desktop')
+  await clock.settle()
+  expect(world.opens, 'the chat already used things, so the pane opened').toBe(1)
+  const ui = await $.ui.mount({ plugin: 'chat-monitor', surface: 'desktop', component: 'Pane', requestId: 'chat-monitor', props })
+  const headers = async () => (await ui.findAll({ type: 'Button', text: /^[▾▸] / })).map(one => one.text)
+  const has = async (text: RegExp) => (await ui.find({ type: 'Text', text }))?.text
+  const allFolded = ['▸ To-do', '▸ Connectors', '▸ Web', '▸ Subagents', '▸ Files', '▸ Skills', '▸ Context cost']
+
+  expect(await headers(), 'every card folded').toEqual(allFolded)
+  expect(await has(/import\.ts/), 'no rows showing').toBeUndefined()
+  expect(await has(/^Session$/), 'the Session card is no fold: it shows').toBeDefined()
+
+  // The person opens Files; /chat-monitor on the open pane leaves it open.
+  await ui.press({ key: 'sec-files' })
+  expect(await has(/import\.ts/), 'Files opened').toBeDefined()
+  await $.command.run({ command: 'chat-monitor' } as never)
+  await clock.settle()
+  expect(await has(/import\.ts/), 'still open while the pane stays open').toBeDefined()
+
+  // Closed, then opened again: every card folded again.
+  world.isUp = false
+  await $.command.run({ command: 'chat-monitor' } as never)
+  await clock.settle()
+  expect(world.opens, 'opened again').toBe(3)
+  expect(await headers(), 'folded again').toEqual(allFolded)
+  expect(await has(/import\.ts/)).toBeUndefined()
 })

@@ -40,6 +40,8 @@ const AGENT_TOOL = 'Agent'
 const EMPTY: Inventory = { connectors: [], files: [], skills: [], sites: [], searches: [], agents: [], counted: [] }
 const NO_PLAN: Plan = { title: '', steps: [], updatedAt: 0 }
 const FIRST_VIEW: View = { open: '', folded: [], allFiles: false, closed: false }
+/** The cards that fold, in the pane's order; every one is folded each time the pane opens. */
+const CARDS = ['todo', 'connectors', 'web', 'agents', 'files', 'skills', 'cost']
 const NO_META: Meta = { transcript: '' }
 const NO_WEIGHTS: Weights = { model: '', connectors: [], skills: [], files: [], onDemand: [], at: 0 }
 const NO_SPEND: Spend = { carried: {}, requests: 0, byAgent: {}, agentUsd: {} }
@@ -1463,7 +1465,13 @@ async function seed($: EngineInterface) {
 
 // ---- Live tracking ----
 
+/**
+ * Opens the pane with every card folded, so it starts as a list of section names to open. A pane
+ * already open keeps the cards the person opened.
+ */
 async function openPane($: EngineInterface) {
+  const panes = await $.ui.panes().catch(() => [])
+  if (!panes.some(pane => pane.id === PANE)) await update($, viewAtom, view => ({ ...view, folded: [...CARDS], open: '' }))
   await $.ui.open({ id: PANE, title: TITLE })
 }
 

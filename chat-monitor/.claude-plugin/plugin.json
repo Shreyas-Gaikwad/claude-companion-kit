@@ -1,7 +1,7 @@
 {
   "name": "chat-monitor",
-  "version": "2.1.0",
-  "description": "A side pane, Monitor, in a quiet card layout: a summary card with the total, a bar of where creds went and tiles for cache hits, cold sends, the priciest prompt and the average per prompt; lists with tiles, tags and sort menus; a to-do stepper; the to-do list, connectors, websites, files, subagents with their creds and skills with their creds (instructions, skill list line and the turns that used them) this chat has used; failed and blocked calls; what loads into every message in creds, unused connectors and skills first; the total and each subagent's creds by Claude Code's own cost estimate; and a Copy button (/chat-monitor copy) for a Markdown summary",
+  "version": "2.2.0",
+  "description": "A side pane, Monitor, in a quiet card layout, every section folded each time it opens: a summary card with the total, a bar of where creds went and tiles for cache hits, cold sends, the priciest prompt and the average per prompt; lists with tiles, tags and sort menus; a to-do stepper; the to-do list, connectors, websites, files, subagents with their creds and skills with their creds (instructions, skill list line and the turns that used them) this chat has used; failed and blocked calls; what loads into every message in creds, unused connectors and skills first; the total and each subagent's creds by Claude Code's own cost estimate; and a Copy button (/chat-monitor copy) for a Markdown summary",
   "author": {
     "name": "Shreyas"
   },
